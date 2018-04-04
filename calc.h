@@ -1,3 +1,5 @@
+#include "std_lib_facilities.h"
+
 class Token {
 public:
 	Token(char ch)    

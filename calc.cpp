@@ -1,4 +1,3 @@
-#include "std_lib_facilities.h"
 #include "calc.h"
 
 using namespace std;
@@ -16,6 +15,9 @@ TERM ->
 PRIMARY ->
 	NUMBER
 	( EXPRESSION )
+	{ EXPRESSION }
+	- PRIMARY
+	+ PRIMARY
 NUMBER ->
 	floating point literal
 */
@@ -26,12 +28,10 @@ Token_stream::Token_stream()
 {
 }
 
-
 void Token_stream::putback(Token t){
 	if (full) error("putback into a full buffer");
 	buffer = t;
 	full = true;
-
 }
 
 Token Token_stream::get() {
@@ -45,7 +45,7 @@ Token Token_stream::get() {
 	switch(ch){
 		case ';':
  		case 'q':
- 		case '(': case ')': case '+': case '-': case '*': case '/':
+ 		case '(': case ')': case '+': case '-': case '*': case '/': case '{': case '}': case '%':
  			return Token(ch);
  		case '.':
  		case '0': case '1': case '2': case '3': case '4':
@@ -98,6 +98,14 @@ double term() {
 				t = ts.get();
 				break;
 			}
+			case '%':
+			{
+				double d = primary();
+				if(d == 0) error("%:divide by zero");
+				left = fmod(left,d);
+				t = ts.get();
+				break;
+			}
 			default:
 				ts.putback(t);
 				return left;
@@ -115,8 +123,19 @@ double primary() {
 			if (t.kind != ')') error("')' expected");
 			return d;
 		}
+		case '{':
+		{
+			double d = expression();
+			t = ts.get();
+			if (t.kind != '}') error("} expected");
+			return d;
+		}
 		case '8':
 			return t.value;
+		case '-':
+			return - primary();
+		case '+':
+			return primary();
 		default:
 			error("primary expected");
 	}	
@@ -124,18 +143,19 @@ double primary() {
 
 int main() {
 	try {
-		double val = 0;
+		double var;
 		while(cin) {
 			cout << "> ";
 			Token t = ts.get();
-
-			if (t.kind == 'q') break;
-			if (t.kind == ';')
-				cout << "=" << val << "\n";
-			else
-				ts.putback(t);
-			val = expression();
+			if (t.kind == ';') t = ts.get();
+			if (t.kind=='q') {
+				return 0;
+			}
+			ts.putback(t);
+			var = expression();
+			cout << "= " << var << "\n";
 		}
+		return 0;
 	}
 	catch (exception& e) {
 		cerr << e.what() << "\n";
