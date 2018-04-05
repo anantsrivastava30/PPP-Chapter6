@@ -3,6 +3,20 @@
 using namespace std;
 
 /* Grammer
+
+CALCULATION ->
+	STATEMENT 
+	PRINT 
+	QUIT
+	CALCULATION STATEMENT 
+
+STATEMENTS ->
+	DECLARATION 
+	EXPRESSION
+
+DECLARATION ->
+	"LET" NAME "=" EXPRESSION
+
 EXPRESSION ->
 	TERM
 	EXPRESSION + TERM
@@ -14,12 +28,15 @@ TERM ->
 	TERM % PRIMARY
 PRIMARY ->
 	NUMBER
+	NAME
 	( EXPRESSION )
 	{ EXPRESSION }
 	- PRIMARY
 	+ PRIMARY
 NUMBER ->
 	floating point literal
+NAME ->
+	var
 */
 
 
@@ -45,7 +62,16 @@ Token Token_stream::get() {
 	switch(ch){
 		case ';':
  		case 'q':
- 		case '(': case ')': case '+': case '-': case '*': case '/': case '{': case '}': case '%':
+ 		case '(': 
+ 		case ')': 
+ 		case '+': 
+ 		case '-': 
+ 		case '*': 
+ 		case '/': 
+ 		case '{': 
+ 		case '}': 
+ 		case '%':
+ 		case '=':
  			return Token(ch);
  		case '.':
  		case '0': case '1': case '2': case '3': case '4':
@@ -54,11 +80,70 @@ Token Token_stream::get() {
  			cin.putback(ch);
  			double val;
  			cin >> val;
- 			return  Token('8', val);
+ 			return  Token(number, val);
  		}
  		default:
+ 			if (isalpha(ch)) {
+ 				cin.putback(ch);
+ 				string s;
+ 				cin >> s;
+ 				if(s == declkey) return Token(let);
+ 				return Token(name, s);
+ 			}
  			error("bad token");
 	}
+}
+
+double get_value(string s) {
+	for (const Variable& v : var_table)
+		if (v.name == s) return v.value;
+	error("get : undefined variable ", s);
+}
+
+void set_value(string s, double d) {
+	for (Variable& v : var_table) {
+		if (v.name == s) {
+			v.value = d;
+			return;
+		}
+	}
+	error("set the variable before assignment", s);
+}
+
+bool is_declared(string var) {
+	for (const Variable&v : var_table)
+		if (v.name == var) return true;
+	return false;
+}
+
+double define_name(string var, double val) {
+	if (is_declared(var)) error(var, " declared twice");
+	var_table.push_back(Variable(var, val));
+	return val;
+}
+
+double statement() {
+	Token t = ts.get();
+	switch(t.kind) {
+	case let:
+		return declaration();
+	default:
+		ts.putback(t);
+		return expression();
+	}
+}
+
+double declaration(){
+	Token t = ts.get();
+	if(t.kind != name) error("name expected in declaration");
+	string var_name = t.name;
+
+	Token t2 = ts.get();
+	if (t2.kind != '=') error("= missing in declaration of", var_name);
+
+	double d = expression();
+	define_name(var_name, d);
+	return d;
 }
 
 double expression() {
@@ -115,6 +200,7 @@ double term() {
 
 double primary() {
 	Token t = ts.get();
+	cout << t.kind << "\n";
 	switch (t.kind) {
 		case '(':
 		{
@@ -130,31 +216,42 @@ double primary() {
 			if (t.kind != '}') error("} expected");
 			return d;
 		}
-		case '8':
+		case number:
 			return t.value;
 		case '-':
 			return - primary();
 		case '+':
 			return primary();
+		case name:
+		{
+			cout << t.name << "\n";
+			
+			double d = get_value(t.name);
+			return d;
+			// return get_value(var);
+		}
 		default:
 			error("primary expected");
 	}	
 }
 
+void calculate()
+{
+double var;
+while(cin) {
+	cout << "> ";
+	Token t = ts.get();
+	if (t.kind == print) t = ts.get();
+	if (t.kind == quit) return;
+	ts.putback(t);
+	var = statement();
+	cout << "= " << var << "\n";
+	}
+}
+
 int main() {
 	try {
-		double var;
-		while(cin) {
-			cout << "> ";
-			Token t = ts.get();
-			if (t.kind == ';') t = ts.get();
-			if (t.kind=='q') {
-				return 0;
-			}
-			ts.putback(t);
-			var = expression();
-			cout << "= " << var << "\n";
-		}
+		calculate();
 		return 0;
 	}
 	catch (exception& e) {
