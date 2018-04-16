@@ -84,9 +84,10 @@ Token Token_stream::get() {
  		}
  		default:
  			if (isalpha(ch)) {
- 				cin.putback(ch);
  				string s;
- 				cin >> s;
+ 				s += ch;
+ 				while (cin.get(ch) && (isalpha(ch) || isdigit(ch))) s += ch;
+ 				cin.putback(ch);
  				if(s == declkey) return Token(let);
  				return Token(name, s);
  			}
@@ -94,9 +95,13 @@ Token Token_stream::get() {
 	}
 }
 
+// working as expected
 double get_value(string s) {
-	for (const Variable& v : var_table)
+	// cout << "size of vector : " << var_table.size() << endl;
+	for (const Variable& v : var_table) {
+		// cout << " in get_value before if " << v.name << s << v.value << endl;
 		if (v.name == s) return v.value;
+	}
 	error("get : undefined variable ", s);
 }
 
@@ -116,6 +121,7 @@ bool is_declared(string var) {
 	return false;
 }
 
+// Symbol table
 double define_name(string var, double val) {
 	if (is_declared(var)) error(var, " declared twice");
 	var_table.push_back(Variable(var, val));
@@ -143,6 +149,7 @@ double declaration(){
 
 	double d = expression();
 	define_name(var_name, d);
+	// cout << get_value(var_name) << " : value of :" << var_name << endl;
 	return d;
 }
 
@@ -200,7 +207,7 @@ double term() {
 
 double primary() {
 	Token t = ts.get();
-	cout << t.kind << "\n";
+	// cout << t.kind << "\n";
 	switch (t.kind) {
 		case '(':
 		{
@@ -224,9 +231,10 @@ double primary() {
 			return primary();
 		case name:
 		{
-			cout << t.name << "\n";
-			
+			// cout << t.name << "\n";
+
 			double d = get_value(t.name);
+
 			return d;
 			// return get_value(var);
 		}
@@ -235,10 +243,13 @@ double primary() {
 	}	
 }
 
+// TODO add feature for printing only the expression not the 
+// declaration  
 void calculate()
 {
 double var;
 while(cin) {
+
 	cout << "> ";
 	Token t = ts.get();
 	if (t.kind == print) t = ts.get();
